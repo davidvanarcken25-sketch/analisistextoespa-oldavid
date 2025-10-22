@@ -5,68 +5,47 @@ import pandas as pd
 import re
 from nltk.stem import SnowballStemmer
 
-# --- ESTILO VISUAL ---
-st.markdown(
-    """
-    <style>
-    .title {
-        color: #ff66b2; /* Rosado */
-        text-align: center;
-        font-size: 38px;
-        font-weight: bold;
-    }
-    .subtitle {
-        text-align: center;
-        font-size: 18px;
-        color: #666;
-    }
-    .center-img {
-        display: block;
-        margin-left: auto;
-        margin-right: auto;
-        width: 140px;
-        border-radius: 10px;
-    }
-    .stButton>button {
-        background-color: #ff66b2;
-        color: white;
-        border-radius: 10px;
-        height: 3em;
-        width: 100%;
-        font-size: 1em;
-        border: none;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
+# ======================
+# CONFIGURACIÓN DE PÁGINA
+# ======================
+st.set_page_config(
+    page_title="Análisis de texto (inglés) - Word Factory",
+    page_icon="🧠",
+    layout="wide"
 )
 
-# --- TÍTULOS ---
-st.markdown('<h1 class="title">Word Factory 🔤</h1>', unsafe_allow_html=True)
-st.markdown('<p class="subtitle">Analiza cómo tus frases se conectan en esta fábrica de palabras inteligentes</p>', unsafe_allow_html=True)
+# ======================
+# ESTILO Y TÍTULO
+# ======================
+st.markdown("""
+<div style='text-align:center'>
+    <h1 style='color:#E91E63;'>Análisis de texto (inglés)</h1>
+    <h3 style='color:#F06292;'>Word Factory — donde tus palabras cobran vida</h3>
+</div>
+""", unsafe_allow_html=True)
 
-# --- GIF temático ---
-st.image(
-    "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ3A0cG1hYnFoN2YxYW9nOWtpZmhrY3NsZ3puc3B5ZnU4bnNhd2d3MiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/v1.Y2lkPTc5MGI3NjExbWptYml2Y3NzaXJyaGhhdzNraHc3M3lyYmN4eWFjcnl0ZWJ0bXEycyZjdD1n/MX6Q1CqZkFi0A6kU5p/giphy.gif",
-    use_container_width=False,
-    width=160
-)
-
-# --- DESCRIPCIÓN ---
 st.write("""
-Bienvenido a la **Word Factory**, donde tus textos se convierten en piezas de un rompecabezas lingüístico.  
-Cada línea que escribas será una “pieza” o “ingrediente” que nuestra máquina analizará para descubrir cuál encaja mejor con tu pregunta.
+Bienvenido a **Word Factory**, un laboratorio lingüístico donde analizamos tus textos 
+y descubrimos qué tan relacionados están con tus preguntas.  
+Cada línea que escribas será tratada como un **documento** (una frase o párrafo independiente).
+
+El sistema usa **TF-IDF** y *stemming* para reconocer similitudes, 
+tratando palabras como *playing*, *played* o *play* como equivalentes.
 """)
 
-# --- ENTRADAS ---
+# ======================
+# ENTRADAS
+# ======================
 text_input = st.text_area(
-    "Ingresa tus documentos (uno por línea, en inglés):",
-    "The robot loves words.\nThe factory creates new sentences.\nMachines can learn to understand language."
+    "Escribe tus documentos (uno por línea, en inglés):",
+    "The dog barks loudly.\nThe cat meows at night.\nThe dog and the cat play together."
 )
 
-question = st.text_input("Escribe tu pregunta (en inglés):", "What does the factory create?")
+question = st.text_input("Escribe una pregunta (en inglés):", "Who is playing?")
 
-# --- PROCESAMIENTO ---
+# ======================
+# TOKENIZACIÓN Y STEMMING
+# ======================
 stemmer = SnowballStemmer("english")
 
 def tokenize_and_stem(text: str):
@@ -76,12 +55,15 @@ def tokenize_and_stem(text: str):
     stems = [stemmer.stem(t) for t in tokens]
     return stems
 
-# --- ANÁLISIS TF-IDF ---
-if st.button("Procesar en la fábrica de palabras"):
+# ======================
+# PROCESAMIENTO
+# ======================
+if st.button("Analizar texto"):
     documents = [d.strip() for d in text_input.split("\n") if d.strip()]
     if len(documents) < 1:
         st.warning("Por favor, ingresa al menos un documento.")
     else:
+        # Crear vectorizador TF-IDF
         vectorizer = TfidfVectorizer(
             tokenizer=tokenize_and_stem,
             stop_words="english",
@@ -90,15 +72,17 @@ if st.button("Procesar en la fábrica de palabras"):
 
         X = vectorizer.fit_transform(documents)
 
+        # Mostrar matriz TF-IDF
         df_tfidf = pd.DataFrame(
             X.toarray(),
             columns=vectorizer.get_feature_names_out(),
             index=[f"Doc {i+1}" for i in range(len(documents))]
         )
 
-        st.write("### Mapa de ingredientes lingüísticos (TF-IDF)")
+        st.markdown("### Matriz TF-IDF (stems)")
         st.dataframe(df_tfidf.round(3))
 
+        # Similitud con la pregunta
         question_vec = vectorizer.transform([question])
         similarities = cosine_similarity(question_vec, X).flatten()
 
@@ -106,20 +90,24 @@ if st.button("Procesar en la fábrica de palabras"):
         best_doc = documents[best_idx]
         best_score = similarities[best_idx]
 
-        st.write("### Resultado del análisis de la fábrica")
+        st.markdown("### Resultado del análisis")
         st.write(f"**Tu pregunta:** {question}")
-        st.write(f"**Texto más conectado (Doc {best_idx+1}):** {best_doc}")
-        st.write(f"**Nivel de coincidencia:** {best_score:.3f}")
+        st.write(f"**Documento más relevante (Doc {best_idx+1}):** {best_doc}")
+        st.write(f"**Puntaje de similitud:** {best_score:.3f}")
 
+        # Mostrar todas las similitudes
         sim_df = pd.DataFrame({
             "Documento": [f"Doc {i+1}" for i in range(len(documents))],
             "Texto": documents,
             "Similitud": similarities
         })
-        st.write("### Puntuaciones de similitud entre piezas")
+        st.markdown("### Puntajes de similitud")
         st.dataframe(sim_df.sort_values("Similitud", ascending=False))
 
+        # Mostrar coincidencias de stems
         vocab = vectorizer.get_feature_names_out()
         q_stems = tokenize_and_stem(question)
         matched = [s for s in q_stems if s in vocab and df_tfidf.iloc[best_idx].get(s, 0) > 0]
-        st.write("### Palabras clave conectadas en el texto elegido:", matched)
+
+        st.markdown("### Stems de la pregunta presentes en el documento elegido")
+        st.write(matched)
