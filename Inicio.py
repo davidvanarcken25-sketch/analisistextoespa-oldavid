@@ -5,109 +5,120 @@ import pandas as pd
 import re
 from nltk.stem import SnowballStemmer
 
-# ======================
-# CONFIGURACIÓN DE PÁGINA
-# ======================
-st.set_page_config(
-    page_title="Análisis de texto (inglés) - Word Factory",
-    page_icon="🧠",
-    layout="wide"
-)
-
-# ======================
-# ESTILO Y TÍTULO
-# ======================
+# --- ESTILO VISUAL ---
 st.markdown("""
-<div style='text-align:center'>
-    <h1 style='color:#E91E63;'>Análisis de texto (inglés)</h1>
-    <h3 style='color:#F06292;'>Word Factory — donde tus palabras cobran vida</h3>
-</div>
+    <style>
+        body {
+            background-color: #0E1117;
+            color: #E0E0E0;
+        }
+        .title {
+            color: #00BCD4;
+            text-align: center;
+            font-size: 2.2em;
+            font-weight: bold;
+        }
+        .subtitle {
+            text-align: center;
+            color: #A0A0A0;
+            font-size: 1.1em;
+        }
+        .stButton > button {
+            background-color: #00BCD4;
+            color: white;
+            border-radius: 8px;
+            border: none;
+            font-weight: bold;
+        }
+        .stButton > button:hover {
+            background-color: #0097A7;
+        }
+    </style>
 """, unsafe_allow_html=True)
 
-st.write("""
-Bienvenido a **Word Factory**, un laboratorio lingüístico donde analizamos tus textos 
-y descubrimos qué tan relacionados están con tus preguntas.  
-Cada línea que escribas será tratada como un **documento** (una frase o párrafo independiente).
+# --- TÍTULOS Y DESCRIPCIÓN ---
+st.markdown("<div class='title'>TextoBot 3000</div>", unsafe_allow_html=True)
+st.markdown("<div class='subtitle'>Asistente de análisis textual con IA — versión de demostración</div>", unsafe_allow_html=True)
+st.write("")
 
-El sistema usa **TF-IDF** y *stemming* para reconocer similitudes, 
-tratando palabras como *playing*, *played* o *play* como equivalentes.
-""")
+# --- DOCUMENTOS DE EJEMPLO ---
+default_docs = """El perro ladra fuerte en el parque.
+El gato maúlla suavemente durante la noche.
+El perro y el gato juegan juntos en el jardín.
+Los niños corren y se divierten en el parque.
+La música suena muy alta en la fiesta.
+Los pájaros cantan hermosas melodías al amanecer."""
 
-# ======================
-# ENTRADAS
-# ======================
-text_input = st.text_area(
-    "Escribe tus documentos (uno por línea, en inglés):",
-    "The dog barks loudly.\nThe cat meows at night.\nThe dog and the cat play together."
-)
+stemmer = SnowballStemmer("spanish")
 
-question = st.text_input("Escribe una pregunta (en inglés):", "Who is playing?")
-
-# ======================
-# TOKENIZACIÓN Y STEMMING
-# ======================
-stemmer = SnowballStemmer("english")
-
-def tokenize_and_stem(text: str):
+def tokenize_and_stem(text):
     text = text.lower()
-    text = re.sub(r'[^a-z\s]', ' ', text)
+    text = re.sub(r'[^a-záéíóúüñ\s]', ' ', text)
     tokens = [t for t in text.split() if len(t) > 1]
     stems = [stemmer.stem(t) for t in tokens]
     return stems
 
-# ======================
-# PROCESAMIENTO
-# ======================
-if st.button("Analizar texto"):
+# --- INTERFAZ ---
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    text_input = st.text_area("📄 Documentos (uno por línea):", default_docs, height=150)
+    question = st.text_input("❓ Escribe tu consulta:", "¿Dónde juegan el perro y el gato?")
+
+with col2:
+    st.markdown("### Sugerencias rápidas:")
+    if st.button("¿Dónde juegan el perro y el gato?", use_container_width=True):
+        st.session_state.question = "¿Dónde juegan el perro y el gato?"
+        st.rerun()
+    if st.button("¿Qué hacen los niños en el parque?", use_container_width=True):
+        st.session_state.question = "¿Qué hacen los niños en el parque?"
+        st.rerun()
+    if st.button("¿Cuándo cantan los pájaros?", use_container_width=True):
+        st.session_state.question = "¿Cuándo cantan los pájaros?"
+        st.rerun()
+    if st.button("¿Dónde suena la música alta?", use_container_width=True):
+        st.session_state.question = "¿Dónde suena la música alta?"
+        st.rerun()
+    if st.button("¿Qué animal maúlla durante la noche?", use_container_width=True):
+        st.session_state.question = "¿Qué animal maúlla durante la noche?"
+        st.rerun()
+
+if 'question' in st.session_state:
+    question = st.session_state.question
+
+# --- ANÁLISIS TF-IDF ---
+if st.button("Analizar con TextoBot", type="primary"):
     documents = [d.strip() for d in text_input.split("\n") if d.strip()]
     if len(documents) < 1:
-        st.warning("Por favor, ingresa al menos un documento.")
+        st.error("Por favor, ingresa al menos un documento.")
+    elif not question.strip():
+        st.error("Escribe una pregunta o consulta para analizar.")
     else:
-        # Crear vectorizador TF-IDF
         vectorizer = TfidfVectorizer(
             tokenizer=tokenize_and_stem,
-            stop_words="english",
-            token_pattern=None
+            min_df=1
         )
-
         X = vectorizer.fit_transform(documents)
-
-        # Mostrar matriz TF-IDF
+        st.markdown("### Matriz TF-IDF")
         df_tfidf = pd.DataFrame(
             X.toarray(),
             columns=vectorizer.get_feature_names_out(),
             index=[f"Doc {i+1}" for i in range(len(documents))]
         )
+        st.dataframe(df_tfidf.round(3), use_container_width=True)
 
-        st.markdown("### Matriz TF-IDF (stems)")
-        st.dataframe(df_tfidf.round(3))
-
-        # Similitud con la pregunta
         question_vec = vectorizer.transform([question])
         similarities = cosine_similarity(question_vec, X).flatten()
-
         best_idx = similarities.argmax()
         best_doc = documents[best_idx]
         best_score = similarities[best_idx]
 
         st.markdown("### Resultado del análisis")
-        st.write(f"**Tu pregunta:** {question}")
-        st.write(f"**Documento más relevante (Doc {best_idx+1}):** {best_doc}")
-        st.write(f"**Puntaje de similitud:** {best_score:.3f}")
+        st.markdown(f"**Consulta:** {question}")
+        if best_score > 0.01:
+            st.success(f"**Texto más relevante:** {best_doc}")
+            st.info(f"Similitud calculada: {best_score:.3f}")
+        else:
+            st.warning(f"Texto con baja similitud: {best_doc}")
+            st.info(f"Similitud: {best_score:.3f}")
 
-        # Mostrar todas las similitudes
-        sim_df = pd.DataFrame({
-            "Documento": [f"Doc {i+1}" for i in range(len(documents))],
-            "Texto": documents,
-            "Similitud": similarities
-        })
-        st.markdown("### Puntajes de similitud")
-        st.dataframe(sim_df.sort_values("Similitud", ascending=False))
-
-        # Mostrar coincidencias de stems
-        vocab = vectorizer.get_feature_names_out()
-        q_stems = tokenize_and_stem(question)
-        matched = [s for s in q_stems if s in vocab and df_tfidf.iloc[best_idx].get(s, 0) > 0]
-
-        st.markdown("### Stems de la pregunta presentes en el documento elegido")
-        st.write(matched)
