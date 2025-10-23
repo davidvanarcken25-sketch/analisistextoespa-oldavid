@@ -1,65 +1,25 @@
 import streamlit as st
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import pandas as pd
-import re
-from nltk.stem import SnowballStemmer
 
-# =======================
-# 🎧 CONFIGURACIÓN DE PÁGINA
-# =======================
-st.set_page_config(page_title="MusicSense – Analizador de Letras", layout="centered")
+# Título y descripción
+st.title("🎵 MusicSentiment: Análisis de Opiniones Musicales")
+st.write("Escribe tu opinión sobre una canción o artista, y te diré si es positiva o negativa.")
 
-# =======================
-# 🎨 ESTILO
-# =======================
-st.markdown("""
-    <style>
-        body { background-color: #0E1117; color: #E0E0E0; }
-        .title { color: #E91E63; text-align: center; font-size: 2.4em; font-weight: bold; }
-        .subtitle { text-align: center; color: #A0A0A0; font-size: 1.1em; }
-        .stButton > button {
-            background-color: #E91E63; color: white; border-radius: 10px;
-            border: none; font-weight: bold; font-size: 1em;
-        }
-        .stButton > button:hover { background-color: #C2185B; }
-        .emotion { font-size: 1.2em; text-align: center; margin-top: 10px; }
-    </style>
-""", unsafe_allow_html=True)
+# Entrada de texto del usuario
+comentario = st.text_input("Por ejemplo:", "Me encanta la nueva canción de ese artista")
 
-# =======================
-# 🎵 TÍTULO Y DESCRIPCIÓN
-# =======================
-st.markdown("<div class='title'>🎶 MusicSense</div>", unsafe_allow_html=True)
-st.markdown("<div class='subtitle'>Analiza letras y descubre su energía emocional 🎧</div>", unsafe_allow_html=True)
-st.write("")
+# Diccionario básico de palabras positivas y negativas
+positivas = ["buena", "genial", "increíble", "fantástica", "bonita", "me encanta", "maravillosa", "emocionante", "pegajosa", "agradable", "divertida"]
+negativas = ["mala", "horrible", "aburrida", "fea", "decepcionante", "terrible", "molesta", "triste", "sin sentido", "mediocre"]
 
-# =======================
-# 📝 EJEMPLOS DE LETRAS
-# =======================
-default_lyrics = """Hoy el sol brilla más fuerte y no puedo dejar de bailar.
-Sigo atrapado en mis pensamientos, sin poder escapar.
-Tu voz me eleva, me hace sentir en las nubes.
-Nada tiene sentido cuando tú no estás.
-Cantando en la lluvia, sin miedo a perder.
-El silencio suena más alto cuando me faltas tú.
-Una nueva melodía nació en mi corazón."""
+# Análisis de sentimiento simple
+if comentario:
+    comentario_lower = comentario.lower()
+    puntos_positivos = sum(p in comentario_lower for p in positivas)
+    puntos_negativos = sum(p in comentario_lower for p in negativas)
 
-stemmer = SnowballStemmer("spanish")
-
-def tokenize_and_stem(text):
-    text = text.lower()
-    text = re.sub(r'[^a-záéíóúüñ\s]', ' ', text)
-    tokens = [t for t in text.split() if len(t) > 1]
-    stems = [stemmer.stem(t) for t in tokens]
-    return stems
-
-# =======================
-# 🧠 INTERFAZ PRINCIPAL
-# =======================
-st.markdown("### Escribe o pega una letra musical 🎤")
-text_input = st.text_area("Cada línea será una frase o verso:", default_lyrics, height=180)
-
-st.markdown("### Tema principal o frase de referencia 🎵")
-question = st.text_input("Por ejemplo:", "alegría y esperan_
-
+    if puntos_positivos > puntos_negativos:
+        st.success("🎧 Tu opinión es **positiva**. ¡Parece que te gustó la música!")
+    elif puntos_negativos > puntos_positivos:
+        st.error("💀 Tu opinión es **negativa**. No parece haberte gustado mucho.")
+    else:
+        st.warning("😐 Tu opinión es **neutral** o no se puede determinar claramente.")
