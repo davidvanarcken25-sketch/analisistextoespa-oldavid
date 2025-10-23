@@ -34,6 +34,4 @@ if comentario:
         st.warning("😐 Tu opinión es **neutral** o no se puede determinar claramente.")
         st.write("🤔 *Difícil saber si te gustó o no.*")
 
-# Footer decorativo
-st.markdown("---")
-st.markdown("🎶 *MusicSentiment — Proyecto de análisis de texto en español* 🎶")
+
