@@ -5,49 +5,45 @@ import pandas as pd
 import re
 from nltk.stem import SnowballStemmer
 
-# --- ESTILO VISUAL ---
+# =======================
+# 🎧 CONFIGURACIÓN DE PÁGINA
+# =======================
+st.set_page_config(page_title="MusicSense – Analizador de Letras", layout="centered")
+
+# =======================
+# 🎨 ESTILO
+# =======================
 st.markdown("""
     <style>
-        body {
-            background-color: #0E1117;
-            color: #E0E0E0;
-        }
-        .title {
-            color: #00BCD4;
-            text-align: center;
-            font-size: 2.2em;
-            font-weight: bold;
-        }
-        .subtitle {
-            text-align: center;
-            color: #A0A0A0;
-            font-size: 1.1em;
-        }
+        body { background-color: #0E1117; color: #E0E0E0; }
+        .title { color: #E91E63; text-align: center; font-size: 2.4em; font-weight: bold; }
+        .subtitle { text-align: center; color: #A0A0A0; font-size: 1.1em; }
         .stButton > button {
-            background-color: #00BCD4;
-            color: white;
-            border-radius: 8px;
-            border: none;
-            font-weight: bold;
+            background-color: #E91E63; color: white; border-radius: 10px;
+            border: none; font-weight: bold; font-size: 1em;
         }
-        .stButton > button:hover {
-            background-color: #0097A7;
-        }
+        .stButton > button:hover { background-color: #C2185B; }
+        .emotion { font-size: 1.2em; text-align: center; margin-top: 10px; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- TÍTULOS Y DESCRIPCIÓN ---
-st.markdown("<div class='title'>TextoBot 3000</div>", unsafe_allow_html=True)
-st.markdown("<div class='subtitle'>Asistente de análisis textual con IA — versión de demostración</div>", unsafe_allow_html=True)
+# =======================
+# 🎵 TÍTULO Y DESCRIPCIÓN
+# =======================
+st.markdown("<div class='title'>🎶 MusicSense</div>", unsafe_allow_html=True)
+st.markdown("<div class='subtitle'>Analiza letras y descubre su energía emocional 🎧</div>", unsafe_allow_html=True)
 st.write("")
 
-# --- DOCUMENTOS DE EJEMPLO ---
-default_docs = """El perro ladra fuerte en el parque.
-El gato maúlla suavemente durante la noche.
-El perro y el gato juegan juntos en el jardín.
-Los niños corren y se divierten en el parque.
-La música suena muy alta en la fiesta.
-Los pájaros cantan hermosas melodías al amanecer."""
+# =======================
+# 📝 EJEMPLOS DE LETRAS
+# =======================
+default_lyrics = """Hoy el sol brilla más fuerte y no puedo dejar de bailar.
+Sigo atrapado en mis pensamientos, sin poder escapar.
+Tu voz me eleva, me hace sentir en las nubes.
+Nada tiene sentido cuando tú no estás.
+Cantando en la lluvia, sin miedo a perder.
+El silencio suena más alto cuando me faltas tú.
+Una nueva melodía nació en mi corazón."""
 
 stemmer = SnowballStemmer("spanish")
 
@@ -58,67 +54,12 @@ def tokenize_and_stem(text):
     stems = [stemmer.stem(t) for t in tokens]
     return stems
 
-# --- INTERFAZ ---
-col1, col2 = st.columns([2, 1])
+# =======================
+# 🧠 INTERFAZ PRINCIPAL
+# =======================
+st.markdown("### Escribe o pega una letra musical 🎤")
+text_input = st.text_area("Cada línea será una frase o verso:", default_lyrics, height=180)
 
-with col1:
-    text_input = st.text_area("📄 Documentos (uno por línea):", default_docs, height=150)
-    question = st.text_input("❓ Escribe tu consulta:", "¿Dónde juegan el perro y el gato?")
-
-with col2:
-    st.markdown("### Sugerencias rápidas:")
-    if st.button("¿Dónde juegan el perro y el gato?", use_container_width=True):
-        st.session_state.question = "¿Dónde juegan el perro y el gato?"
-        st.rerun()
-    if st.button("¿Qué hacen los niños en el parque?", use_container_width=True):
-        st.session_state.question = "¿Qué hacen los niños en el parque?"
-        st.rerun()
-    if st.button("¿Cuándo cantan los pájaros?", use_container_width=True):
-        st.session_state.question = "¿Cuándo cantan los pájaros?"
-        st.rerun()
-    if st.button("¿Dónde suena la música alta?", use_container_width=True):
-        st.session_state.question = "¿Dónde suena la música alta?"
-        st.rerun()
-    if st.button("¿Qué animal maúlla durante la noche?", use_container_width=True):
-        st.session_state.question = "¿Qué animal maúlla durante la noche?"
-        st.rerun()
-
-if 'question' in st.session_state:
-    question = st.session_state.question
-
-# --- ANÁLISIS TF-IDF ---
-if st.button("Analizar con TextoBot", type="primary"):
-    documents = [d.strip() for d in text_input.split("\n") if d.strip()]
-    if len(documents) < 1:
-        st.error("Por favor, ingresa al menos un documento.")
-    elif not question.strip():
-        st.error("Escribe una pregunta o consulta para analizar.")
-    else:
-        vectorizer = TfidfVectorizer(
-            tokenizer=tokenize_and_stem,
-            min_df=1
-        )
-        X = vectorizer.fit_transform(documents)
-        st.markdown("### Matriz TF-IDF")
-        df_tfidf = pd.DataFrame(
-            X.toarray(),
-            columns=vectorizer.get_feature_names_out(),
-            index=[f"Doc {i+1}" for i in range(len(documents))]
-        )
-        st.dataframe(df_tfidf.round(3), use_container_width=True)
-
-        question_vec = vectorizer.transform([question])
-        similarities = cosine_similarity(question_vec, X).flatten()
-        best_idx = similarities.argmax()
-        best_doc = documents[best_idx]
-        best_score = similarities[best_idx]
-
-        st.markdown("### Resultado del análisis")
-        st.markdown(f"**Consulta:** {question}")
-        if best_score > 0.01:
-            st.success(f"**Texto más relevante:** {best_doc}")
-            st.info(f"Similitud calculada: {best_score:.3f}")
-        else:
-            st.warning(f"Texto con baja similitud: {best_doc}")
-            st.info(f"Similitud: {best_score:.3f}")
+st.markdown("### Tema principal o frase de referencia 🎵")
+question = st.text_input("Por ejemplo:", "alegría y esperan_
 
